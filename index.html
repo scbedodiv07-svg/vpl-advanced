@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Lab: Light Intensity & Photosynthesis</title>
-    <!-- SLS xAPI Helper Libraries -->
+    
+    <!-- SLS xAPI helper libraries -->
     <script src="xapiwrapper.min.js"></script>
     <script src="xAPI.js"></script>
+
     <style>
         /* Modern System Font Stack replacing Google Fonts */
         :root {
@@ -627,7 +629,7 @@
                             </tbody>
                         </table>
                         <div id="empty-state" class="empty-state">
-                            No data recorded yet. Complete a 30s run to log data.
+                            No data recorded yet. Complete a run to log data.
                         </div>
                     </div>
                 </div>
@@ -714,7 +716,7 @@
         let bubbleInterval = null;
         let experimentData = [];
         
-        // Hidden student score keeping model (Unseen by raw view)
+        // Student score keeping model
         let studentScores = {
             c1: 0,
             c2: 0,
@@ -741,9 +743,7 @@
         // Scale & Position calibration logic for variable iframe widths on SLS
         function initRuler() {
             rulerContainer.innerHTML = '';
-            const beaker = document.getElementById('beaker');
-            if (!beaker) return;
-            const beakerRect = beaker.getBoundingClientRect();
+            const beakerRect = document.getElementById('beaker').getBoundingClientRect();
             const simRect = document.getElementById('sim-area').getBoundingClientRect();
             const plantCenterX = (beakerRect.left + beakerRect.right) / 2 - simRect.left;
             
@@ -768,9 +768,7 @@
             const dist = parseInt(slider.value);
             distVal.innerText = dist;
             
-            const beaker = document.getElementById('beaker');
-            if (!beaker) return;
-            const beakerRect = beaker.getBoundingClientRect();
+            const beakerRect = document.getElementById('beaker').getBoundingClientRect();
             const simRect = document.getElementById('sim-area').getBoundingClientRect();
             const plantCenterX = (beakerRect.left + beakerRect.right) / 2 - simRect.left;
             
@@ -863,7 +861,7 @@
         }
 
         // Automated validation of dropdown parameters 
-        function validateConclusions() {
+        function validateConclusions(sync = true) {
             const c1 = document.getElementById('conclusion-1');
             const c2 = document.getElementById('conclusion-2');
             const c3 = document.getElementById('conclusion-3');
@@ -914,116 +912,147 @@
             studentScores.c3 = s3;
             studentScores.c4 = s4;
 
-            saveToLocal();
+            if (sync) {
+                saveToLocal();
+                syncToSLS();
+            }
         }
 
-        // SLS Local Cache & xAPI Synchronization 
-        function saveToLocal() {
-            const currentConclusions = {
-                c1: document.getElementById('conclusion-1').value,
-                c2: document.getElementById('conclusion-2').value,
-                c3: document.getElementById('conclusion-3').value,
-                c4: document.getElementById('conclusion-4').value,
-                bonus: document.getElementById('bonus-input').value
-            };
+        // SLS Cloud Sync & structured human-readable report formatting
+        function syncToSLS() {
+            // Calculate a numeric representation of score (0 to 5 max)
+            const calculatedScore = studentScores.c1 + studentScores.c2 + studentScores.c3 + studentScores.c4 + studentScores.bonus;
 
-            // 1. Cache configuration to LocalStorage
-            localStorage.setItem('sls_photosynthesis_data', JSON.stringify(experimentData));
-            localStorage.setItem('sls_conclusions', JSON.stringify(currentConclusions));
-            localStorage.setItem('sls_scores', JSON.stringify(studentScores));
+            // Prepare visual report string for SLS teacher dashboard feedback panel
+            let report = "=== SLS PHOTOSYNTHESIS LAB REPORT ===<br><br>";
+            
+            report += "--- EXPERIMENTAL RESULTS ---<br>";
+            if (experimentData.length === 0) {
+                report += "No experiment runs logged yet.<br>";
+            } else {
+                experimentData.forEach((run, index) => {
+                    report += `Run #${index + 1}: Distance = ${run.x} cm, Time = ${run.time} s, Bubbles = ${run.count}, Rate = ${run.y} b/min<br>`;
+                });
+            }
+            report += "<br>";
 
-            // 2. Synthesize tracking payload for xAPI
-            // Scoring structure: 5 questions overall (4 dropdowns + 1 bonus). 20 marks each.
-            const totalQuestions = 5;
-            const correctAnswers = studentScores.c1 + studentScores.c2 + studentScores.c3 + studentScores.c4 + studentScores.bonus;
-            const computedGrade = Math.round((correctAnswers / totalQuestions) * 100);
+            report += "--- SCIENTIFIC CONCLUSION DROPDOWNS ---<br>";
+            const c1Val = document.getElementById('conclusion-1').value || "---";
+            const c2Val = document.getElementById('conclusion-2').value || "---";
+            const c3Val = document.getElementById('conclusion-3').value || "---";
+            const c4Val = document.getElementById('conclusion-4').value || "---";
+            
+            report += `1. Lamp Distance: "${c1Val}" [${studentScores.c1 ? 'CORRECT' : 'INCORRECT'}]<br>`;
+            report += `2. Light Intensity: "${c2Val}" [${studentScores.c2 ? 'CORRECT' : 'INCORRECT'}]<br>`;
+            report += `3. Photosynthesis Rate: "${c3Val}" [${studentScores.c3 ? 'CORRECT' : 'INCORRECT'}]<br>`;
+            report += `4. Bubble output: "${c4Val}" [${studentScores.c4 ? 'CORRECT' : 'INCORRECT'}]<br><br>`;
 
-            // Detailed qualitative text feedback containing selections and outcomes
-            let textFeedback = "Student Selections:<br>";
-            textFeedback += `- Conclusion 1 (Distance): ${currentConclusions.c1 || "None Selected"} (${studentScores.c1 ? "Correct" : "Incorrect"})<br>`;
-            textFeedback += `- Conclusion 2 (Intensity): ${currentConclusions.c2 || "None Selected"} (${studentScores.c2 ? "Correct" : "Incorrect"})<br>`;
-            textFeedback += `- Conclusion 3 (Rate of Photosynthesis): ${currentConclusions.c3 || "None Selected"} (${studentScores.c3 ? "Correct" : "Incorrect"})<br>`;
-            textFeedback += `- Conclusion 4 (Bubble Outcome): ${currentConclusions.c4 || "None Selected"} (${studentScores.c4 ? "Correct" : "Incorrect"})<br>`;
-            textFeedback += `- Bonus Question (Gas byproduct): "${currentConclusions.bonus || "No Entry"}" (${studentScores.bonus ? "Correct" : "Incorrect"})<br><br>`;
-            textFeedback += `Trials Completed: ${experimentData.length} experiments documented.`;
+            report += "--- BONUS QUESTION ---<br>";
+            const bonusAns = document.getElementById('bonus-input').value.trim() || "---";
+            report += `Gas in Bubbles: "${bonusAns}" [${studentScores.bonus ? 'CORRECT' : 'INCORRECT'}]<br><br>`;
+            report += `Final Interactive Score: ${calculatedScore} / 5`;
 
-            // Prepare state payload adhering to xAPI standard representation
+            // State Payload definition containing state and SLS visual feedback
             const statePayload = {
-                score: computedGrade,
-                feedback: textFeedback,
+                score: calculatedScore,
+                feedback: report,
                 experimentData: experimentData,
-                conclusions: currentConclusions,
+                conclusions: {
+                    c1: c1Val,
+                    c2: c2Val,
+                    c3: c3Val,
+                    c4: c4Val,
+                    bonus: bonusAns
+                },
                 scores: studentScores
             };
 
-            // Deliver telemetry to SLS
+            // Trigger xAPI storage sequence
             if (window.storeState) {
                 window.storeState(statePayload);
             }
         }
 
-        function loadFromLocal() {
-            // First check SLS Cloud Storage State via xAPI
-            let rawData = null;
-            let rawConclusions = null;
-            let rawScores = null;
+        // Local storage cache backup
+        function saveToLocal() {
+            localStorage.setItem('sls_photosynthesis_data', JSON.stringify(experimentData));
+            localStorage.setItem('sls_conclusions', JSON.stringify({
+                c1: document.getElementById('conclusion-1').value,
+                c2: document.getElementById('conclusion-2').value,
+                c3: document.getElementById('conclusion-3').value,
+                c4: document.getElementById('conclusion-4').value,
+                bonus: document.getElementById('bonus-input').value
+            }));
+            localStorage.setItem('sls_scores', JSON.stringify(studentScores));
+        }
 
+        // Hybrid load restoring Cloud state (SLS xAPI) first with LocalStorage cache fallback
+        function loadState() {
+            let loadedData = null;
+            let loadedConclusions = null;
+            let loadedScores = null;
+
+            // 1. Recover Cloud State from SLS
             try {
                 if (window.getState) {
-                    const savedState = window.getState();
-                    if (savedState) {
-                        console.log('[xAPI] Found cloud state, recovering data...', savedState);
-                        if (savedState.experimentData) experimentData = savedState.experimentData;
-                        if (savedState.conclusions) {
-                            rawConclusions = JSON.stringify(savedState.conclusions);
+                    let slsState = window.getState();
+                    if (slsState) {
+                        if (typeof slsState === 'string') {
+                            try { slsState = JSON.parse(slsState); } catch(e) {}
                         }
-                        if (savedState.scores) {
-                            rawScores = JSON.stringify(savedState.scores);
+                        if (slsState && (slsState.experimentData || slsState.conclusions)) {
+                            console.log("[xAPI] Reclaimed Cloud State successfully.");
+                            loadedData = slsState.experimentData;
+                            loadedConclusions = slsState.conclusions;
+                            loadedScores = slsState.scores;
                         }
                     }
                 }
             } catch (err) {
-                console.warn('[xAPI] Cloud recovery failed, falling back to LocalStorage', err);
+                console.warn("[xAPI] Failed to parse LRS Cloud state. Reverting to local cache fallback:", err);
             }
 
-            // Fallback to LocalStorage if cloud state retrieval is empty or failed
-            if (!experimentData || experimentData.length === 0) {
-                const cachedData = localStorage.getItem('sls_photosynthesis_data');
-                if (cachedData) experimentData = JSON.parse(cachedData);
+            // 2. Fall back to Local Cache if LRS has no state or is empty
+            if (!loadedData) {
+                const rawData = localStorage.getItem('sls_photosynthesis_data');
+                if (rawData) loadedData = JSON.parse(rawData);
             }
-            if (!rawConclusions) {
-                rawConclusions = localStorage.getItem('sls_conclusions');
+            if (!loadedConclusions) {
+                const rawConclusions = localStorage.getItem('sls_conclusions');
+                if (rawConclusions) loadedConclusions = JSON.parse(rawConclusions);
             }
-            if (!rawScores) {
-                rawScores = localStorage.getItem('sls_scores');
+            if (!loadedScores) {
+                const rawScores = localStorage.getItem('sls_scores');
+                if (rawScores) loadedScores = JSON.parse(rawScores);
             }
 
-            // Process recovered telemetry data to UI
-            if (experimentData && experimentData.length > 0) {
+            // 3. Render loaded states
+            if (loadedData) {
+                experimentData = loadedData;
                 emptyState.classList.add('hidden');
+                resultsBody.innerHTML = '';
                 experimentData.forEach(entry => {
                     renderTableRow(entry.x, entry.time, entry.count, entry.y);
                 });
                 drawChart();
             }
 
-            if (rawConclusions) {
-                const con = JSON.parse(rawConclusions);
-                document.getElementById('conclusion-1').value = con.c1 || "";
-                document.getElementById('conclusion-2').value = con.c2 || "";
-                document.getElementById('conclusion-3').value = con.c3 || "";
-                document.getElementById('conclusion-4').value = con.c4 || "";
-                document.getElementById('bonus-input').value = con.bonus || "";
+            if (loadedConclusions) {
+                document.getElementById('conclusion-1').value = loadedConclusions.c1 || "";
+                document.getElementById('conclusion-2').value = loadedConclusions.c2 || "";
+                document.getElementById('conclusion-3').value = loadedConclusions.c3 || "";
+                document.getElementById('conclusion-4').value = loadedConclusions.c4 || "";
+                document.getElementById('bonus-input').value = loadedConclusions.bonus || "";
             }
 
-            if (rawScores) {
-                studentScores = JSON.parse(rawScores);
+            if (loadedScores) {
+                studentScores = loadedScores;
             }
 
-            // Apply visual validation styles directly based on restored states
-            validateConclusions();
+            // Validate UI styles and refresh chart bounds without dispatching redundant syncs
+            validateConclusions(false);
             if (document.getElementById('bonus-input').value) {
-                checkBonus();
+                checkBonus(false);
             }
         }
 
@@ -1050,11 +1079,11 @@
             
             drawChart();
             saveToLocal();
+            syncToSLS(); // Instantly publish trial update to SLS
         }
 
         // Custom High-Performance 100% Offline Grid Charting Engine
         function drawChart() {
-            if (!canvas) return;
             const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
             canvas.width = rect.width * dpr;
@@ -1180,7 +1209,7 @@
             }
         }
 
-        function checkBonus() {
+        function checkBonus(sync = true) {
             const input = document.getElementById('bonus-input').value.trim().toLowerCase();
             const feedback = document.getElementById('bonus-feedback');
             if (input === 'oxygen' || input === 'o2') {
@@ -1192,7 +1221,10 @@
                 feedback.style.color = "var(--accent-red)";
                 studentScores.bonus = 0;
             }
-            saveToLocal();
+            if (sync) {
+                saveToLocal();
+                syncToSLS(); // Instantly update LRS
+            }
         }
 
         function resetAll() {
@@ -1215,19 +1247,20 @@
             localStorage.removeItem('sls_conclusions');
             localStorage.removeItem('sls_scores');
             
-            validateConclusions();
+            validateConclusions(false);
             drawChart();
+            syncToSLS(); // Sync empty/cleared baseline to SLS
         }
 
         // Listeners for Interactive Controls
         slider.addEventListener('input', updateLamp);
         startBtn.addEventListener('click', toggleExperiment);
-        document.getElementById('check-bonus').addEventListener('click', checkBonus);
+        document.getElementById('check-bonus').addEventListener('click', () => checkBonus(true));
         document.getElementById('reset-btn').addEventListener('click', resetAll);
         
         // Save and validate answers as students interact with options
         document.querySelectorAll('select').forEach(s => {
-            s.addEventListener('change', validateConclusions);
+            s.addEventListener('change', () => validateConclusions(true));
         });
         
         // Reset check state on input modifications
@@ -1240,7 +1273,7 @@
         window.onload = () => {
             initRuler();
             updateLamp();
-            loadFromLocal();
+            loadState();
             drawChart();
             
             // Re-render and recalibrate canvas scales to handle dynamic iframe view sizes on SLS
