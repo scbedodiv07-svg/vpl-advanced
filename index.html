@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Lab: Light Intensity & Photosynthesis</title>
+    <!-- SLS xAPI Helper Libraries -->
     <script src="xapiwrapper.min.js"></script>
+    <script src="xAPI.js"></script>
     <style>
         /* Modern System Font Stack replacing Google Fonts */
         :root {
@@ -739,7 +741,9 @@
         // Scale & Position calibration logic for variable iframe widths on SLS
         function initRuler() {
             rulerContainer.innerHTML = '';
-            const beakerRect = document.getElementById('beaker').getBoundingClientRect();
+            const beaker = document.getElementById('beaker');
+            if (!beaker) return;
+            const beakerRect = beaker.getBoundingClientRect();
             const simRect = document.getElementById('sim-area').getBoundingClientRect();
             const plantCenterX = (beakerRect.left + beakerRect.right) / 2 - simRect.left;
             
@@ -764,7 +768,9 @@
             const dist = parseInt(slider.value);
             distVal.innerText = dist;
             
-            const beakerRect = document.getElementById('beaker').getBoundingClientRect();
+            const beaker = document.getElementById('beaker');
+            if (!beaker) return;
+            const beakerRect = beaker.getBoundingClientRect();
             const simRect = document.getElementById('sim-area').getBoundingClientRect();
             const plantCenterX = (beakerRect.left + beakerRect.right) / 2 - simRect.left;
             
@@ -911,23 +917,89 @@
             saveToLocal();
         }
 
-        // SLS Local Cache Sync
+        // SLS Local Cache & xAPI Synchronization 
         function saveToLocal() {
-            localStorage.setItem('sls_photosynthesis_data', JSON.stringify(experimentData));
-            localStorage.setItem('sls_conclusions', JSON.stringify({
+            const currentConclusions = {
                 c1: document.getElementById('conclusion-1').value,
                 c2: document.getElementById('conclusion-2').value,
                 c3: document.getElementById('conclusion-3').value,
                 c4: document.getElementById('conclusion-4').value,
                 bonus: document.getElementById('bonus-input').value
-            }));
+            };
+
+            // 1. Cache configuration to LocalStorage
+            localStorage.setItem('sls_photosynthesis_data', JSON.stringify(experimentData));
+            localStorage.setItem('sls_conclusions', JSON.stringify(currentConclusions));
             localStorage.setItem('sls_scores', JSON.stringify(studentScores));
+
+            // 2. Synthesize tracking payload for xAPI
+            // Scoring structure: 5 questions overall (4 dropdowns + 1 bonus). 20 marks each.
+            const totalQuestions = 5;
+            const correctAnswers = studentScores.c1 + studentScores.c2 + studentScores.c3 + studentScores.c4 + studentScores.bonus;
+            const computedGrade = Math.round((correctAnswers / totalQuestions) * 100);
+
+            // Detailed qualitative text feedback containing selections and outcomes
+            let textFeedback = "Student Selections:<br>";
+            textFeedback += `- Conclusion 1 (Distance): ${currentConclusions.c1 || "None Selected"} (${studentScores.c1 ? "Correct" : "Incorrect"})<br>`;
+            textFeedback += `- Conclusion 2 (Intensity): ${currentConclusions.c2 || "None Selected"} (${studentScores.c2 ? "Correct" : "Incorrect"})<br>`;
+            textFeedback += `- Conclusion 3 (Rate of Photosynthesis): ${currentConclusions.c3 || "None Selected"} (${studentScores.c3 ? "Correct" : "Incorrect"})<br>`;
+            textFeedback += `- Conclusion 4 (Bubble Outcome): ${currentConclusions.c4 || "None Selected"} (${studentScores.c4 ? "Correct" : "Incorrect"})<br>`;
+            textFeedback += `- Bonus Question (Gas byproduct): "${currentConclusions.bonus || "No Entry"}" (${studentScores.bonus ? "Correct" : "Incorrect"})<br><br>`;
+            textFeedback += `Trials Completed: ${experimentData.length} experiments documented.`;
+
+            // Prepare state payload adhering to xAPI standard representation
+            const statePayload = {
+                score: computedGrade,
+                feedback: textFeedback,
+                experimentData: experimentData,
+                conclusions: currentConclusions,
+                scores: studentScores
+            };
+
+            // Deliver telemetry to SLS
+            if (window.storeState) {
+                window.storeState(statePayload);
+            }
         }
 
         function loadFromLocal() {
-            const rawData = localStorage.getItem('sls_photosynthesis_data');
-            if (rawData) {
-                experimentData = JSON.parse(rawData);
+            // First check SLS Cloud Storage State via xAPI
+            let rawData = null;
+            let rawConclusions = null;
+            let rawScores = null;
+
+            try {
+                if (window.getState) {
+                    const savedState = window.getState();
+                    if (savedState) {
+                        console.log('[xAPI] Found cloud state, recovering data...', savedState);
+                        if (savedState.experimentData) experimentData = savedState.experimentData;
+                        if (savedState.conclusions) {
+                            rawConclusions = JSON.stringify(savedState.conclusions);
+                        }
+                        if (savedState.scores) {
+                            rawScores = JSON.stringify(savedState.scores);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('[xAPI] Cloud recovery failed, falling back to LocalStorage', err);
+            }
+
+            // Fallback to LocalStorage if cloud state retrieval is empty or failed
+            if (!experimentData || experimentData.length === 0) {
+                const cachedData = localStorage.getItem('sls_photosynthesis_data');
+                if (cachedData) experimentData = JSON.parse(cachedData);
+            }
+            if (!rawConclusions) {
+                rawConclusions = localStorage.getItem('sls_conclusions');
+            }
+            if (!rawScores) {
+                rawScores = localStorage.getItem('sls_scores');
+            }
+
+            // Process recovered telemetry data to UI
+            if (experimentData && experimentData.length > 0) {
                 emptyState.classList.add('hidden');
                 experimentData.forEach(entry => {
                     renderTableRow(entry.x, entry.time, entry.count, entry.y);
@@ -935,7 +1007,6 @@
                 drawChart();
             }
 
-            const rawConclusions = localStorage.getItem('sls_conclusions');
             if (rawConclusions) {
                 const con = JSON.parse(rawConclusions);
                 document.getElementById('conclusion-1').value = con.c1 || "";
@@ -945,7 +1016,6 @@
                 document.getElementById('bonus-input').value = con.bonus || "";
             }
 
-            const rawScores = localStorage.getItem('sls_scores');
             if (rawScores) {
                 studentScores = JSON.parse(rawScores);
             }
@@ -984,6 +1054,7 @@
 
         // Custom High-Performance 100% Offline Grid Charting Engine
         function drawChart() {
+            if (!canvas) return;
             const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
             canvas.width = rect.width * dpr;
@@ -1179,59 +1250,6 @@
                 drawChart();
             });
         };
-    </script>
-    <script>
-        // 1. Setup the xAPI parameters and configurations from SLS
-        const XAPIUtils = {
-            parameters: null,
-            getParameters: function() {
-                if (!this.parameters) {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const endpoint = urlParams.get('endpoint');
-                    const auth = urlParams.get('auth');
-                    const agent = JSON.parse(urlParams.get('agent'));
-                    const stateId = urlParams.get('stateId');
-                    const activityId = urlParams.get('activityId');
-                    
-                    // Configure the wrapper to point to SLS
-                    ADL.XAPIWrapper.changeConfig({
-                        "endpoint": endpoint + "/",
-                        "auth": `Basic ${auth}`
-                    });
-                    
-                    this.parameters = { agent, stateId, activityId };
-                }
-                return this.parameters;
-            }
-        };
-        
-        // Initialize the credentials when the page loads
-        document.addEventListener("DOMContentLoaded", function() {
-            XAPIUtils.getParameters();
-        });
-        
-        // 2. The core function to send data to SLS
-        function saveToSLS(scoreValue, feedbackText) {
-            try {
-                const params = XAPIUtils.getParameters();
-                
-                // Structure the package exactly how SLS expects it
-                const statePackage = {
-                    score: scoreValue,        // Appears in your teacher dashboard score column
-                    feedback: feedbackText,  // Appears in your teacher dashboard response column
-                    data: {                  // Hidden data used to restore student's state if they refresh
-                        score: scoreValue,
-                        feedback: feedbackText
-                    }
-                };
-                
-                // Send it off!
-                ADL.XAPIWrapper.sendState(params.activityId, params.agent, params.stateId, null, statePackage);
-                console.log("Data successfully saved to SLS!");
-            } catch (err) {
-                console.error("Failed to save data to SLS:", err);
-            }
-        }
     </script>
 </body>
 </html>
