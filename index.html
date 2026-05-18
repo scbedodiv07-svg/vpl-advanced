@@ -4,82 +4,569 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Lab: Light Intensity & Photosynthesis</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
-        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        /* Modern System Font Stack replacing Google Fonts */
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-light: #eff6ff;
+            --bg-main: #f0f4f8;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --accent-green: #10b981;
+            --accent-green-hover: #059669;
+            --accent-red: #ef4444;
+            --accent-red-hover: #dc2626;
+            --panel-bg: rgba(255, 255, 255, 0.95);
+            --border-color: #e2e8f0;
+            --radius-xl: 1.5rem;
+            --radius-lg: 1rem;
+            --radius-md: 0.5rem;
+            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            --transition-all: all 0.25s ease-in-out;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-dark);
+            line-height: 1.5;
+            padding: 1.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            color: #1e3a8a;
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 1rem;
+        }
+
+        /* Responsive Grid for SLS standard columns */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 1024px) {
+            .grid-layout {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-size: 1.25rem;
+            color: #1e3a8a;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        /* Simulation Container Window */
+        .sim-area {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            background-color: #f0f7ff;
+            border: 2px solid #dbeafe;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Hydrilla container aligning relative to viewport width */
+        #plant-container {
+            position: absolute;
+            left: 5%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #beaker {
+            position: relative;
+            width: 70px;
+            height: 160px;
+            border: 4px solid #bfdbfe;
+            border-top: none;
+            border-bottom-left-radius: var(--radius-md);
+            border-bottom-right-radius: var(--radius-md);
+            background: rgba(191, 219, 254, 0.2);
+            overflow: hidden;
+        }
+
+        .water-layer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 80%;
+            background: rgba(147, 197, 253, 0.25);
+        }
+
+        #hydrilla {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #bubble-emitter {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+        }
+
         .bubble {
             position: absolute;
-            background: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.9);
             border-radius: 50%;
             pointer-events: none;
             animation: rise linear forwards;
         }
+
         @keyframes rise {
             0% { transform: translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateY(-200px) scale(1.5); opacity: 0; }
+            100% { transform: translateY(-120px) scale(1.4); opacity: 0; }
         }
+
+        /* Lamp Mechanics */
+        #lamp-container {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            right: 10%;
+        }
+
+        .lamp-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
         .lamp-glow {
-            transition: all 0.3s ease;
-            filter: blur(30px);
-            /* Gradient shine leftward from the lamp head */
-            background: radial-gradient(ellipse at right, rgba(253, 224, 71, 0.8) 0%, rgba(253, 224, 71, 0) 80%);
+            transition: var(--transition-all);
+            filter: blur(25px);
+            background: radial-gradient(ellipse at right, rgba(253, 224, 71, 0.75) 0%, rgba(253, 224, 71, 0) 80%);
+            pointer-events: none;
         }
+
+        #light-beam {
+            position: absolute;
+            right: 100%;
+            width: 380px;
+            height: 150px;
+            opacity: 0;
+            transform-origin: right center;
+        }
+
+        .lamp-head {
+            transform: rotate(90deg);
+            color: #475569;
+        }
+
+        /* Ruler Layout and Markings */
+        #ruler-container {
+            position: absolute;
+            bottom: 0.5rem;
+            left: 0;
+            width: 100%;
+            padding: 0 1rem;
+            display: flex;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-family: monospace;
+            pointer-events: none;
+        }
+
+        .ruler-tick {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .ruler-tick span {
+            height: 8px;
+            width: 1px;
+            background-color: #cbd5e1;
+        }
+
+        /* Controls Layout */
+        .controls-group {
+            width: 100%;
+            margin-top: 1.5rem;
+        }
+
+        .slider-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .slider-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: var(--radius-md);
+            outline: none;
+        }
+
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
+            appearance: none;
             height: 24px;
             width: 24px;
             border-radius: 50%;
-            background: #2563eb;
+            background: var(--primary);
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transition: var(--transition-all);
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        /* Info Display Blocks */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-card {
+            background-color: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .metric-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: var(--transition-all);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-start { background-color: var(--accent-green); }
+        .btn-start:hover { background-color: var(--accent-green-hover); }
+        .btn-stop { background-color: var(--accent-red); }
+        .btn-stop:hover { background-color: var(--accent-red-hover); }
+
+        /* Tables & Results Visuals */
+        .table-panel {
+            margin-bottom: 2rem;
+        }
+
+        .table-container {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .empty-state {
+            padding: 2.5rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* SVG / Canvas Plotting container */
+        .chart-container {
+            width: 100%;
+            position: relative;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+        }
+
+        .chart-canvas {
+            display: block;
+            width: 100%;
+            height: 260px;
+        }
+
+        /* Conclusion Block Styles */
+        .conclusions-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .conclusions-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .conclusion-panel select {
+            border: none;
+            border-bottom: 2px solid #93c5fd;
+            background: transparent;
+            font-weight: 700;
+            color: var(--primary);
+            padding: 0 0.25rem;
+            cursor: pointer;
+            font-size: 0.95rem;
+            outline: none;
+            transition: var(--transition-all);
+        }
+
+        .conclusion-panel select:focus {
+            border-bottom-color: var(--primary);
+        }
+
+        .conclusion-text-para {
+            margin-bottom: 1rem;
+            line-height: 1.7;
+            font-size: 0.95rem;
+        }
+
+        /* Bonus section */
+        .bonus-box {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .bonus-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .bonus-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .bonus-input {
+            flex-1: 1 auto;
+            width: 60%;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 0.5rem 1rem;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        .bonus-input:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-check {
+            background-color: var(--primary);
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.5rem 1.25rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition-all);
+        }
+
+        .btn-check:hover {
+            background-color: var(--primary-hover);
+        }
+
+        #bonus-feedback {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+
+        .pro-tip {
+            background-color: #1e3a8a;
+            color: #ffffff;
+            padding: 1.5rem;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 1.5rem;
+        }
+
+        .pro-tip h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .pro-tip p {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .btn-reset {
+            background-color: #fee2e2;
+            color: var(--accent-red);
+            border: 1px solid #fecaca;
+            border-radius: var(--radius-lg);
+            padding: 0.75rem 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+            transition: var(--transition-all);
+            width: 100%;
+        }
+
+        .btn-reset:hover {
+            background-color: #fca5a5;
+            color: #7f1d1d;
+        }
+
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-6xl mx-auto">
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl font-bold text-blue-900">Virtual Science Lab: Photosynthesis</h1>
-            <p class="text-gray-600 mt-2 italic">Investigating the relationship between Light Intensity and the Rate of Photosynthesis</p>
+<body>
+    <div class="container">
+        <header>
+            <h1>Virtual Lab: Photosynthesis</h1>
+            <p>Investigating the relationship between Light Intensity and the Rate of Photosynthesis</p>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="glass-panel p-6 rounded-3xl shadow-xl relative overflow-hidden flex flex-col items-center">
-                <h2 class="text-xl font-semibold mb-4 text-blue-800 self-start">Simulation Window</h2>
+        <div class="grid-layout">
+            <!-- Left Side Column: Simulation Space -->
+            <div class="glass-panel">
+                <h2 class="panel-title">Simulation Window</h2>
                 
-                <div id="sim-area" class="relative w-full h-80 bg-blue-50 rounded-2xl border-2 border-blue-100 flex items-center overflow-hidden">
-                    
-                    <!-- Beaker (Narrowed and Middle-Aligned on the Left) -->
-                    <div id="plant-container" class="absolute left-8 z-10 flex flex-col items-center">
-                        <div id="beaker" class="relative w-16 h-40 border-4 border-t-0 border-blue-200 rounded-b-xl bg-blue-100/40 overflow-hidden">
-                            <div class="absolute bottom-0 w-full h-4/5 bg-blue-300/30"></div>
-                            <!-- Hydrilla -->
-                            <div id="hydrilla" class="absolute bottom-0 left-1/2 -translate-x-1/2 mb-2">
-                                <svg width="30" height="100" viewBox="0 0 40 120">
+                <div id="sim-area" class="sim-area">
+                    <!-- Beaker Setup -->
+                    <div id="plant-container">
+                        <div id="beaker">
+                            <div class="water-layer"></div>
+                            <!-- Inline Plant Graphic (Hydrilla) -->
+                            <div id="hydrilla">
+                                <svg width="40" height="110" viewBox="0 0 40 120">
                                     <path d="M20 120 Q25 90 20 60 Q15 30 20 0" stroke="#166534" stroke-width="4" fill="none" />
                                     <path d="M20 100 Q5 90 2 80" stroke="#15803d" stroke-width="3" fill="none" />
                                     <path d="M20 100 Q35 90 38 80" stroke="#15803d" stroke-width="3" fill="none" />
                                     <path d="M20 70 Q5 60 2 50" stroke="#15803d" stroke-width="3" fill="none" />
                                     <path d="M20 70 Q35 60 38 50" stroke="#15803d" stroke-width="3" fill="none" />
+                                    <path d="M20 40 Q5 35 2 25" stroke="#15803d" stroke-width="3" fill="none" />
+                                    <path d="M20 40 Q35 35 38 25" stroke="#15803d" stroke-width="3" fill="none" />
                                 </svg>
                             </div>
-                            <div id="bubble-emitter" class="absolute bottom-16 left-1/2"></div>
+                            <div id="bubble-emitter"></div>
                         </div>
-                        <p class="text-[10px] font-bold text-blue-700 mt-1 uppercase tracking-tighter">Hydrilla</p>
+                        <p style="font-size: 10px; font-weight: bold; color: #1e40af; margin-top: 4px; text-transform: uppercase;">Hydrilla</p>
                     </div>
 
-                    <!-- Lamp (Rotated and Facing Left) -->
-                    <div id="lamp-container" class="absolute flex items-center transition-all duration-300" style="right: 10%;">
-                        <div class="relative flex items-center">
-                            <!-- Light Beam pointing LEFT -->
-                            <div id="light-beam" class="lamp-glow absolute right-full w-96 h-40 opacity-0 origin-right"></div>
-                            
-                            <!-- Lamp Head (Rotated 90 degrees clockwise to face left) -->
-                            <div class="transform rotate-90">
-                                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-700">
+                    <!-- Lamp setup -->
+                    <div id="lamp-container">
+                        <div class="lamp-wrapper">
+                            <div id="light-beam" class="lamp-glow"></div>
+                            <div class="lamp-head">
+                                <svg width="55" height="55" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                     <path d="M15 6V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v1"></path>
                                     <path d="M12 3v18"></path>
                                     <path d="M18 13v-1a6 6 0 0 0-12 0v1"></path>
@@ -89,133 +576,151 @@
                         </div>
                     </div>
 
-                    <!-- Ruler (10cm intervals, starting at Plant) -->
-                    <div id="ruler-container" class="absolute bottom-4 left-0 w-full px-4 flex text-[9px] text-gray-400 font-mono pointer-events-none">
-                        <!-- Intervals will be injected via initRuler() -->
-                    </div>
+                    <!-- Centimeter Scale Ruler -->
+                    <div id="ruler-container"></div>
                 </div>
 
-                <div class="w-full mt-6 space-y-6">
-                    <div class="flex flex-col space-y-2">
-                        <label class="flex justify-between font-medium text-gray-700">
-                            <span>Lamp Distance: <span id="dist-val" class="text-blue-600">50</span> cm</span>
-                            <span class="text-xs text-gray-400">Independent Variable</span>
+                <div class="controls-group">
+                    <div class="slider-wrapper">
+                        <label class="slider-label" for="distance-slider">
+                            <span>Lamp Distance: <span id="dist-val" style="color: var(--primary);">50</span> cm</span>
+                            <span class="slider-subtitle">Independent Variable</span>
                         </label>
-                        <input type="range" id="distance-slider" min="10" max="100" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <input type="range" id="distance-slider" min="10" max="100" value="50">
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="p-4 bg-white rounded-2xl shadow-inner border border-gray-100 flex flex-col items-center">
-                            <span class="text-xs uppercase text-gray-400 font-bold">Stopwatch</span>
-                            <span id="timer-display" class="text-2xl font-mono text-gray-800">00:00</span>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-title">Stopwatch</div>
+                            <div id="timer-display" class="metric-value">00:00</div>
                         </div>
-                        <div class="p-4 bg-white rounded-2xl shadow-inner border border-gray-100 flex flex-col items-center">
-                            <span class="text-xs uppercase text-gray-400 font-bold">Bubble Count</span>
-                            <span id="bubble-display" class="text-2xl font-mono text-blue-600">0</span>
+                        <div class="metric-card">
+                            <div class="metric-title">Bubble Count</div>
+                            <div id="bubble-display" class="metric-value" style="color: var(--primary);">0</div>
                         </div>
                     </div>
 
-                    <button id="start-btn" class="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-bold text-lg shadow-lg transition-transform active:scale-95">
-                        Start Experiment
-                    </button>
+                    <button id="start-btn" class="btn btn-start">Start Experiment</button>
                 </div>
             </div>
 
-            <div class="space-y-8">
-                <div class="glass-panel p-6 rounded-3xl shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-blue-800">Results Table</h2>
-                    <div class="overflow-hidden rounded-xl border border-gray-200">
-                        <table class="w-full text-left">
-                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+            <!-- Right Side Column: Data Analysis & Tables -->
+            <div style="display: flex; flex-direction: column; gap: 2rem;">
+                <!-- Table Panel -->
+                <div class="glass-panel table-panel">
+                    <h2 class="panel-title">Results Table</h2>
+                    <div class="table-container">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <th class="px-4 py-3">Distance (cm)</th>
-                                    <th class="px-4 py-3">Time (s)</th>
-                                    <th class="px-4 py-3">Bubbles</th>
-                                    <th class="px-4 py-3">Rate (b/min)</th>
+                                    <th>Distance (cm)</th>
+                                    <th>Time (s)</th>
+                                    <th>Bubbles</th>
+                                    <th>Rate (b/min)</th>
                                 </tr>
                             </thead>
-                            <tbody id="results-body" class="divide-y divide-gray-100 text-sm">
-                                <!-- Data rows go here -->
+                            <tbody id="results-body">
+                                <!-- Dynamically generated rows -->
                             </tbody>
                         </table>
-                        <div id="empty-state" class="p-8 text-center text-gray-400 text-sm">
+                        <div id="empty-state" class="empty-state">
                             No data recorded yet. Complete a 30s run to log data.
                         </div>
                     </div>
                 </div>
 
-                <div class="glass-panel p-6 rounded-3xl shadow-xl">
-                    <h2 class="text-xl font-semibold mb-4 text-blue-800">Data Visualization</h2>
-                    <canvas id="rateChart" class="w-full h-64"></canvas>
+                <!-- Custom Self-Contained Chart Canvas -->
+                <div class="glass-panel">
+                    <h2 class="panel-title">Data Visualization</h2>
+                    <div class="chart-container">
+                        <canvas id="customRateChart" class="chart-canvas"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div class="glass-panel p-8 rounded-3xl shadow-xl">
-                <h2 class="text-2xl font-bold text-blue-900 mb-6">Scientific Conclusion</h2>
-                <div class="space-y-4 text-gray-700 leading-relaxed">
-                    <p>
+        <!-- Analytical Conclusions -->
+        <div class="conclusions-container">
+            <div class="glass-panel">
+                <h2 class="panel-title" style="font-size: 1.5rem; margin-bottom: 1.5rem;">Scientific Conclusion</h2>
+                <div class="conclusion-panel">
+                    <p class="conclusion-text-para">
                         Based on my observations, as the <b>distance</b> of the lamp 
-                        <select id="conclusion-1" class="border-b-2 border-blue-300 focus:outline-none bg-transparent font-bold text-blue-600">
+                        <select id="conclusion-1">
                             <option value="">---</option>
                             <option value="increases">increases</option>
                             <option value="decreases">decreases</option>
                         </select>, 
                         the <b>light intensity</b> 
-                        <select id="conclusion-2" class="border-b-2 border-blue-300 focus:outline-none bg-transparent font-bold text-blue-600">
+                        <select id="conclusion-2">
                             <option value="">---</option>
                             <option value="increases">increases</option>
                             <option value="decreases">decreases</option>
                         </select>.
                     </p>
-                    <p>
+                    <p class="conclusion-text-para">
                         This causes the <b>rate of photosynthesis</b> to 
-                        <select id="conclusion-3" class="border-b-2 border-blue-300 focus:outline-none bg-transparent font-bold text-blue-600">
+                        <select id="conclusion-3">
                             <option value="">---</option>
                             <option value="increase">increase</option>
                             <option value="decrease">decrease</option>
                         </select>, resulting in 
-                        <select id="conclusion-4" class="border-b-2 border-blue-300 focus:outline-none bg-transparent font-bold text-blue-600">
+                        <select id="conclusion-4">
                             <option value="">---</option>
                             <option value="more">more</option>
                             <option value="fewer">fewer</option>
                         </select> bubbles produced per minute.
                     </p>
-                    
-                    <div class="pt-4 border-t border-gray-100">
-                        <label class="block font-bold mb-2">Bonus Question: What gas is found inside the bubbles?</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="bonus-input" placeholder="Enter gas name..." class="flex-1 border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none">
-                            <button id="check-bonus" class="bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition-colors">Check</button>
+
+                    <div class="bonus-box">
+                        <label class="bonus-title" for="bonus-input">Bonus Question: What gas is found inside the bubbles?</label>
+                        <div class="bonus-controls">
+                            <input type="text" id="bonus-input" placeholder="Enter gas name..." class="bonus-input">
+                            <button id="check-bonus" class="btn-check">Check</button>
                         </div>
-                        <p id="bonus-feedback" class="mt-2 text-sm font-medium"></p>
+                        <p id="bonus-feedback"></p>
                     </div>
                 </div>
             </div>
 
-            <div class="flex flex-col justify-center items-center gap-6">
-                <div class="p-6 bg-blue-900 text-white rounded-3xl shadow-2xl w-full">
-                    <h3 class="text-lg font-bold mb-2">Pro-Tip for Students!</h3>
-                    <p class="text-sm text-blue-100">To get the most accurate line of best fit, try testing distances spread out across the whole range (e.g., 20cm, 50cm, and 80cm).</p>
+            <!-- Strategy Tips & Lab Reset -->
+            <div style="display: flex; flex-direction: column; justify-content: space-between; gap: 1.5rem;">
+                <div class="pro-tip">
+                    <h3>Pro-Tip for Students!</h3>
+                    <p>To get the most accurate line of best fit, try testing distances spread out across the whole range (e.g., 20cm, 50cm, and 80cm).</p>
                 </div>
-                <button id="reset-btn" class="px-8 py-3 bg-red-100 text-red-600 rounded-2xl font-bold hover:bg-red-200 transition-colors flex items-center gap-2">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-                    Reset All Lab Data
-                </button>
+                <div>
+                    <button id="reset-btn" class="btn-reset">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display: inline-block; vertical-align: middle;">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
+                        </svg>
+                        Reset All Lab Data
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
+        // SLS-friendly Offline State management & Simulation Controller
         let isRunning = false;
         let timeElapsed = 0;
         let bubbleCount = 0;
         let timerInterval = null;
         let bubbleInterval = null;
-        let chart = null;
         let experimentData = [];
+        
+        // Hidden student score keeping model (Unseen by raw view)
+        let studentScores = {
+            c1: 0,
+            c2: 0,
+            c3: 0,
+            c4: 0,
+            bonus: 0
+        };
 
+        // UI references
         const slider = document.getElementById('distance-slider');
         const distVal = document.getElementById('dist-val');
         const startBtn = document.getElementById('start-btn');
@@ -227,31 +732,30 @@
         const resultsBody = document.getElementById('results-body');
         const emptyState = document.getElementById('empty-state');
         const rulerContainer = document.getElementById('ruler-container');
+        const canvas = document.getElementById('customRateChart');
+        const ctx = canvas.getContext('2d');
 
+        // Scale & Position calibration logic for variable iframe widths on SLS
         function initRuler() {
             rulerContainer.innerHTML = '';
-            // The beaker center is 32px (left-8) + 32px (half of 64px beaker) = 64px approx.
-            // Using getBoundingClientRect for precision
-            const plantRect = document.getElementById('beaker').getBoundingClientRect();
+            const beakerRect = document.getElementById('beaker').getBoundingClientRect();
             const simRect = document.getElementById('sim-area').getBoundingClientRect();
-            const plantCenterX = (plantRect.left + plantRect.right) / 2 - simRect.left;
+            const plantCenterX = (beakerRect.left + beakerRect.right) / 2 - simRect.left;
             
             const totalWidth = simRect.width;
             const rightMargin = 60; 
             const availableSpace = totalWidth - plantCenterX - rightMargin;
             
             for (let i = 0; i <= 100; i += 10) {
-                const marker = document.createElement('div');
-                marker.className = 'absolute flex flex-col items-center';
+                const tick = document.createElement('div');
+                tick.className = 'ruler-tick';
                 const leftPos = plantCenterX + (i / 100) * availableSpace;
-                marker.style.left = `${leftPos}px`;
-                
-                // Longer tick for major 10cm intervals
-                marker.innerHTML = `
-                    <span class="h-3 w-px bg-gray-400"></span>
-                    <span class="mt-1">${i}cm</span>
+                tick.style.left = `${leftPos}px`;
+                tick.innerHTML = `
+                    <span></span>
+                    <span style="margin-top: 4px;">${i}</span>
                 `;
-                rulerContainer.appendChild(marker);
+                rulerContainer.appendChild(tick);
             }
         }
 
@@ -259,64 +763,33 @@
             const dist = parseInt(slider.value);
             distVal.innerText = dist;
             
-            const plantRect = document.getElementById('beaker').getBoundingClientRect();
+            const beakerRect = document.getElementById('beaker').getBoundingClientRect();
             const simRect = document.getElementById('sim-area').getBoundingClientRect();
-            const plantCenterX = (plantRect.left + plantRect.right) / 2 - simRect.left;
+            const plantCenterX = (beakerRect.left + beakerRect.right) / 2 - simRect.left;
             
             const totalWidth = simRect.width;
             const rightMargin = 60;
             const availableSpace = totalWidth - plantCenterX - rightMargin;
             
-            // Map 0-100 range to the pixel space starting from the plant
             const pixelPosFromPlant = (dist / 100) * availableSpace;
             const finalLeftPos = plantCenterX + pixelPosFromPlant;
             
+            // Re-align relative to beaker scale position
             lamp.style.left = `${finalLeftPos}px`;
             lamp.style.right = 'auto';
             
-            // Adjust beam intensity based on distance (Inverse Square Law visual approximation)
+            // Realistic physical mapping: Light Intensity drops exponentially (visual representation)
             const intensity = 1 - (dist / 120);
-            const beamScale = 0.5 + (dist / 100); // Beam stretches to reach the plant
+            const beamScale = 0.5 + (dist / 100); 
             
-            lightBeam.style.opacity = isRunning ? Math.max(0.1, intensity) : 0;
+            lightBeam.style.opacity = isRunning ? Math.max(0.12, intensity) : 0;
             lightBeam.style.transform = `scaleX(${beamScale})`;
         }
 
-        function initChart() {
-            const ctx = document.getElementById('rateChart').getContext('2d');
-            chart = new Chart(ctx, {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'Experimental Data',
-                        data: [],
-                        backgroundColor: '#2563eb',
-                        pointRadius: 6
-                    }, {
-                        label: 'Line of Best Fit',
-                        data: [],
-                        type: 'line',
-                        borderColor: '#93c5fd',
-                        borderDash: [5, 5],
-                        fill: false,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: 'Distance from Light (cm)' }, min: 0, max: 100 },
-                        y: { title: { display: true, text: 'Bubbles per Minute' }, min: 0 }
-                    }
-                }
-            });
-        }
-
         function calculateRate() {
-            // Inverse Square Law simulation: Rate = K / (Distance^2)
-            // Normalized for 10-100cm to feel "playable"
             const dist = parseInt(slider.value);
-            return Math.round(1500 / (dist * 0.5 + 5)); 
+            // Dynamic simulation approximation model for photosynthetic rate
+            return Math.round(1500 / (dist * 0.45 + 5)); 
         }
 
         function createBubble() {
@@ -325,14 +798,14 @@
             bubble.className = 'bubble';
             
             const size = Math.random() * 8 + 4;
-            const offset = (Math.random() - 0.5) * 20;
+            const offset = (Math.random() - 0.5) * 16;
             
             bubble.style.width = `${size}px`;
             bubble.style.height = `${size}px`;
             bubble.style.left = `${offset}px`;
-            bubble.style.bottom = '0';
+            bubble.style.bottom = '0px';
             
-            const duration = 2 + Math.random();
+            const duration = 1.8 + Math.random();
             bubble.style.animationDuration = `${duration}s`;
             
             bubbleEmitter.appendChild(bubble);
@@ -350,10 +823,9 @@
                 bubbleCount = 0;
                 bubbleDisplay.innerText = "0";
                 startBtn.innerText = "Stop Experiment";
-                startBtn.classList.replace('bg-green-500', 'bg-red-500');
-                startBtn.classList.replace('hover:bg-green-600', 'hover:bg-red-600');
+                startBtn.className = "btn btn-stop";
                 
-                updateLamp(); // Refresh beam visibility
+                updateLamp(); 
 
                 timerInterval = setInterval(() => {
                     timeElapsed++;
@@ -361,6 +833,7 @@
                     const secs = (timeElapsed % 60).toString().padStart(2, '0');
                     timerDisplay.innerText = `${mins}:${secs}`;
                     
+                    // Cap experiment at standard 60-second learning run
                     if (timeElapsed >= 60) toggleExperiment();
                 }, 1000);
 
@@ -374,12 +847,124 @@
                 clearInterval(timerInterval);
                 clearInterval(bubbleInterval);
                 startBtn.innerText = "Start Experiment";
-                startBtn.classList.replace('bg-red-500', 'bg-green-500');
-                startBtn.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
+                startBtn.className = "btn btn-start";
                 lightBeam.style.opacity = 0;
                 
-                if (timeElapsed > 5) logData();
+                // Minimum criteria to record reliable learning trials: 5 seconds
+                if (timeElapsed >= 5) logData();
             }
+        }
+
+        // Automated validation of dropdown parameters 
+        function validateConclusions() {
+            const c1 = document.getElementById('conclusion-1');
+            const c2 = document.getElementById('conclusion-2');
+            const c3 = document.getElementById('conclusion-3');
+            const c4 = document.getElementById('conclusion-4');
+
+            const val1 = c1.value;
+            const val2 = c2.value;
+            const val3 = c3.value;
+            const val4 = c4.value;
+
+            // Reset scores & styling default state
+            let s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+            [c1, c2, c3, c4].forEach(s => {
+                s.style.color = 'var(--primary)';
+                s.style.borderBottomColor = '#93c5fd';
+            });
+
+            if (val1) {
+                // Starting parameter is correct by definition
+                s1 = 1;
+                c1.style.color = 'var(--accent-green)';
+                c1.style.borderBottomColor = 'var(--accent-green)';
+
+                // Match parameters logically based on the first selected option path
+                if (val1 === 'increases') {
+                    if (val2 === 'decreases') { s2 = 1; c2.style.color = 'var(--accent-green)'; c2.style.borderBottomColor = 'var(--accent-green)'; }
+                    else if (val2) { s2 = 0; c2.style.color = 'var(--accent-red)'; c2.style.borderBottomColor = 'var(--accent-red)'; }
+
+                    if (val3 === 'decrease') { s3 = 1; c3.style.color = 'var(--accent-green)'; c3.style.borderBottomColor = 'var(--accent-green)'; }
+                    else if (val3) { s3 = 0; c3.style.color = 'var(--accent-red)'; c3.style.borderBottomColor = 'var(--accent-red)'; }
+
+                    if (val4 === 'fewer') { s4 = 1; c4.style.color = 'var(--accent-green)'; c4.style.borderBottomColor = 'var(--accent-green)'; }
+                    else if (val4) { s4 = 0; c4.style.color = 'var(--accent-red)'; c4.style.borderBottomColor = 'var(--accent-red)'; }
+                } else if (val1 === 'decreases') {
+                    if (val2 === 'increases') { s2 = 1; c2.style.color = 'var(--accent-green)'; c2.style.borderBottomColor = 'var(--accent-green)'; }
+                    else if (val2) { s2 = 0; c2.style.color = 'var(--accent-red)'; c2.style.borderBottomColor = 'var(--accent-red)'; }
+
+                    if (val3 === 'increase') { s3 = 1; c3.style.color = 'var(--accent-green)'; c3.style.borderBottomColor = 'var(--accent-green)'; }
+                    else if (val3) { s3 = 0; c3.style.color = 'var(--accent-red)'; c3.style.borderBottomColor = 'var(--accent-red)'; }
+
+                    if (val4 === 'more') { s4 = 1; c4.style.color = 'var(--accent-green)'; c4.style.borderBottomColor = 'var(--accent-green)'; }
+                    else if (val4) { s4 = 0; c4.style.color = 'var(--accent-red)'; c4.style.borderBottomColor = 'var(--accent-red)'; }
+                }
+            }
+
+            studentScores.c1 = s1;
+            studentScores.c2 = s2;
+            studentScores.c3 = s3;
+            studentScores.c4 = s4;
+
+            saveToLocal();
+        }
+
+        // SLS Local Cache Sync
+        function saveToLocal() {
+            localStorage.setItem('sls_photosynthesis_data', JSON.stringify(experimentData));
+            localStorage.setItem('sls_conclusions', JSON.stringify({
+                c1: document.getElementById('conclusion-1').value,
+                c2: document.getElementById('conclusion-2').value,
+                c3: document.getElementById('conclusion-3').value,
+                c4: document.getElementById('conclusion-4').value,
+                bonus: document.getElementById('bonus-input').value
+            }));
+            localStorage.setItem('sls_scores', JSON.stringify(studentScores));
+        }
+
+        function loadFromLocal() {
+            const rawData = localStorage.getItem('sls_photosynthesis_data');
+            if (rawData) {
+                experimentData = JSON.parse(rawData);
+                emptyState.classList.add('hidden');
+                experimentData.forEach(entry => {
+                    renderTableRow(entry.x, entry.time, entry.count, entry.y);
+                });
+                drawChart();
+            }
+
+            const rawConclusions = localStorage.getItem('sls_conclusions');
+            if (rawConclusions) {
+                const con = JSON.parse(rawConclusions);
+                document.getElementById('conclusion-1').value = con.c1 || "";
+                document.getElementById('conclusion-2').value = con.c2 || "";
+                document.getElementById('conclusion-3').value = con.c3 || "";
+                document.getElementById('conclusion-4').value = con.c4 || "";
+                document.getElementById('bonus-input').value = con.bonus || "";
+            }
+
+            const rawScores = localStorage.getItem('sls_scores');
+            if (rawScores) {
+                studentScores = JSON.parse(rawScores);
+            }
+
+            // Apply visual validation styles directly based on restored states
+            validateConclusions();
+            if (document.getElementById('bonus-input').value) {
+                checkBonus();
+            }
+        }
+
+        function renderTableRow(distance, duration, bubbles, rate) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-4 py-3" style="font-weight: 600;">${distance}</td>
+                <td class="px-4 py-3">${duration}s</td>
+                <td class="px-4 py-3">${bubbles}</td>
+                <td class="px-4 py-3" style="color: var(--primary); font-weight: 700;">${rate}</td>
+            `;
+            resultsBody.prepend(row);
         }
 
         function logData() {
@@ -389,24 +974,103 @@
             const entry = { x: distance, y: rate, time: timeElapsed, count: bubbleCount };
             experimentData.push(entry);
             
-            // UI Update
             emptyState.classList.add('hidden');
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="px-4 py-3 font-medium">${distance}</td>
-                <td class="px-4 py-3">${timeElapsed}s</td>
-                <td class="px-4 py-3">${bubbleCount}</td>
-                <td class="px-4 py-3 text-blue-600 font-bold">${rate}</td>
-            `;
-            resultsBody.prepend(row);
+            renderTableRow(distance, timeElapsed, bubbleCount, rate);
             
-            updateChart();
+            drawChart();
+            saveToLocal();
         }
 
-        function updateChart() {
-            chart.data.datasets[0].data = experimentData;
-            
-            // Calculate Best Fit if we have 3+ points
+        // Custom High-Performance 100% Offline Grid Charting Engine
+        function drawChart() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const width = rect.width;
+            const height = rect.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+            const plotWidth = width - padding.left - padding.right;
+            const plotHeight = height - padding.top - padding.bottom;
+
+            // Compute Y limits dynamically based on experiment limits (minimum limit of 150)
+            let maxY = 150;
+            experimentData.forEach(pt => {
+                if (pt.y > maxY) maxY = pt.y + 20;
+            });
+
+            // Grid Lines and Axes Background
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+
+            // Y-axis grid & labels
+            const yTicks = 5;
+            for (let i = 0; i <= yTicks; i++) {
+                const yVal = Math.round((maxY / yTicks) * i);
+                const py = padding.top + plotHeight - (i / yTicks) * plotHeight;
+                
+                ctx.beginPath();
+                ctx.moveTo(padding.left, py);
+                ctx.lineTo(width - padding.right, py);
+                ctx.stroke();
+
+                ctx.fillText(yVal, padding.left - 8, py);
+            }
+
+            // X-axis grid & labels (0 - 100 cm range)
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const xTicks = 10;
+            for (let i = 0; i <= xTicks; i++) {
+                const xVal = i * 10;
+                const px = padding.left + (i / xTicks) * plotWidth;
+
+                ctx.beginPath();
+                ctx.moveTo(px, padding.top);
+                ctx.lineTo(px, padding.top + plotHeight);
+                ctx.stroke();
+
+                ctx.fillText(xVal, px, padding.top + plotHeight + 8);
+            }
+
+            // Draw Axis Labels
+            ctx.save();
+            ctx.translate(12, padding.top + plotHeight / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillStyle = '#475569';
+            ctx.textAlign = 'center';
+            ctx.fillText('Bubbles per Minute', 0, 0);
+            ctx.restore();
+
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillStyle = '#475569';
+            ctx.fillText('Distance from Light (cm)', padding.left + plotWidth / 2, padding.top + plotHeight + 24);
+
+            // Draw Data points
+            experimentData.forEach(pt => {
+                const px = padding.left + (pt.x / 100) * plotWidth;
+                const py = padding.top + plotHeight - (pt.y / maxY) * plotHeight;
+
+                ctx.beginPath();
+                ctx.arc(px, py, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#2563eb';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+
+            // Perform Linear Regression for Line of Best Fit if student logs 3+ data trials
             if (experimentData.length >= 3) {
                 const n = experimentData.length;
                 let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
@@ -417,17 +1081,31 @@
                     sumX2 += p.x * p.x;
                 });
                 
-                const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-                const intercept = (sumY - slope * sumX) / n;
-                
-                const lineData = [
-                    { x: 10, y: Math.max(0, slope * 10 + intercept) },
-                    { x: 100, y: Math.max(0, slope * 100 + intercept) }
-                ];
-                chart.data.datasets[1].data = lineData;
+                const denominator = (n * sumX2 - sumX * sumX);
+                if (Math.abs(denominator) > 0.0001) {
+                    const slope = (n * sumXY - sumX * sumY) / denominator;
+                    const intercept = (sumY - slope * sumX) / n;
+                    
+                    // Coordinates projection for Trend Line
+                    const fitPoints = [10, 100].map(x => {
+                        const y = Math.max(0, slope * x + intercept);
+                        return {
+                            px: padding.left + (x / 100) * plotWidth,
+                            py: padding.top + plotHeight - (y / maxY) * plotHeight
+                        };
+                    });
+
+                    // Draw Trend Line
+                    ctx.beginPath();
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeStyle = '#93c5fd';
+                    ctx.lineWidth = 2.5;
+                    ctx.moveTo(fitPoints[0].px, fitPoints[0].py);
+                    ctx.lineTo(fitPoints[1].px, fitPoints[1].py);
+                    ctx.stroke();
+                    ctx.setLineDash([]); // Reset line pattern
+                }
             }
-            
-            chart.update();
         }
 
         function checkBonus() {
@@ -435,20 +1113,20 @@
             const feedback = document.getElementById('bonus-feedback');
             if (input === 'oxygen' || input === 'o2') {
                 feedback.innerText = "Correct! Oxygen is produced as a byproduct of photosynthesis.";
-                feedback.className = "mt-2 text-sm font-medium text-green-600";
+                feedback.style.color = "var(--accent-green)";
+                studentScores.bonus = 1;
             } else {
                 feedback.innerText = "Not quite. Think about the gas humans need to breathe in!";
-                feedback.className = "mt-2 text-sm font-medium text-red-500";
+                feedback.style.color = "var(--accent-red)";
+                studentScores.bonus = 0;
             }
+            saveToLocal();
         }
 
         function resetAll() {
             experimentData = [];
             resultsBody.innerHTML = '';
             emptyState.classList.remove('hidden');
-            chart.data.datasets[0].data = [];
-            chart.data.datasets[1].data = [];
-            chart.update();
             
             timeElapsed = 0;
             bubbleCount = 0;
@@ -458,22 +1136,46 @@
             document.querySelectorAll('select').forEach(s => s.value = "");
             document.getElementById('bonus-input').value = "";
             document.getElementById('bonus-feedback').innerText = "";
+            
+            studentScores = { c1: 0, c2: 0, c3: 0, c4: 0, bonus: 0 };
+            
+            localStorage.removeItem('sls_photosynthesis_data');
+            localStorage.removeItem('sls_conclusions');
+            localStorage.removeItem('sls_scores');
+            
+            validateConclusions();
+            drawChart();
         }
 
+        // Listeners for Interactive Controls
         slider.addEventListener('input', updateLamp);
         startBtn.addEventListener('click', toggleExperiment);
         document.getElementById('check-bonus').addEventListener('click', checkBonus);
         document.getElementById('reset-btn').addEventListener('click', resetAll);
+        
+        // Save and validate answers as students interact with options
+        document.querySelectorAll('select').forEach(s => {
+            s.addEventListener('change', validateConclusions);
+        });
+        
+        // Reset check state on input modifications
+        document.getElementById('bonus-input').addEventListener('input', () => {
+            studentScores.bonus = 0;
+            document.getElementById('bonus-feedback').innerText = "";
+            saveToLocal();
+        });
 
         window.onload = () => {
-            initChart();
             initRuler();
             updateLamp();
+            loadFromLocal();
+            drawChart();
             
-            // Recalculate ruler if window resizes
+            // Re-render and recalibrate canvas scales to handle dynamic iframe view sizes on SLS
             window.addEventListener('resize', () => {
                 initRuler();
                 updateLamp();
+                drawChart();
             });
         };
     </script>
