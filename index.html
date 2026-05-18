@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Lab: Light Intensity & Photosynthesis</title>
+    <script src="xapiwrapper.min.js"></script>
     <style>
         /* Modern System Font Stack replacing Google Fonts */
         :root {
@@ -1178,6 +1179,59 @@
                 drawChart();
             });
         };
+    </script>
+    <script>
+        // 1. Setup the xAPI parameters and configurations from SLS
+        const XAPIUtils = {
+            parameters: null,
+            getParameters: function() {
+                if (!this.parameters) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const endpoint = urlParams.get('endpoint');
+                    const auth = urlParams.get('auth');
+                    const agent = JSON.parse(urlParams.get('agent'));
+                    const stateId = urlParams.get('stateId');
+                    const activityId = urlParams.get('activityId');
+                    
+                    // Configure the wrapper to point to SLS
+                    ADL.XAPIWrapper.changeConfig({
+                        "endpoint": endpoint + "/",
+                        "auth": `Basic ${auth}`
+                    });
+                    
+                    this.parameters = { agent, stateId, activityId };
+                }
+                return this.parameters;
+            }
+        };
+        
+        // Initialize the credentials when the page loads
+        document.addEventListener("DOMContentLoaded", function() {
+            XAPIUtils.getParameters();
+        });
+        
+        // 2. The core function to send data to SLS
+        function saveToSLS(scoreValue, feedbackText) {
+            try {
+                const params = XAPIUtils.getParameters();
+                
+                // Structure the package exactly how SLS expects it
+                const statePackage = {
+                    score: scoreValue,        // Appears in your teacher dashboard score column
+                    feedback: feedbackText,  // Appears in your teacher dashboard response column
+                    data: {                  // Hidden data used to restore student's state if they refresh
+                        score: scoreValue,
+                        feedback: feedbackText
+                    }
+                };
+                
+                // Send it off!
+                ADL.XAPIWrapper.sendState(params.activityId, params.agent, params.stateId, null, statePackage);
+                console.log("Data successfully saved to SLS!");
+            } catch (err) {
+                console.error("Failed to save data to SLS:", err);
+            }
+        }
     </script>
 </body>
 </html>
