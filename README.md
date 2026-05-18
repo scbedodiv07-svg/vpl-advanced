@@ -31,7 +31,7 @@
 
 ## 3. Adding xAPI integration for score & response collection in SLS
 
-1. Upload "index.html", "xAPI.js" and "xapiwrapper.min.js" to a new Gemini chat.
+1. Upload "index.html", ["xAPI.js"](https://github.com/scbedodiv07-svg/vpl-advanced/blob/6d2a7fe6d46fb4af15a187d00114a292b4764f25/xAPI.js) and ["xapiwrapper.min.js"](https://github.com/scbedodiv07-svg/vpl-advanced/blob/6d2a7fe6d46fb4af15a187d00114a292b4764f25/xapiwrapper.min.js) to a new Gemini chat.
 2. Select Canvas from the Tools dropdown at the bottom left corner of the chat field.
 3. Paste the following prompt into the chat field.<br>
    *\*You may edit Step 3 according to the data you wish to collect from students' interactions (e.g. scores, questions, selections, responses, etc.)*
