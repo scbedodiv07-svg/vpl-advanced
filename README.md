@@ -2,6 +2,10 @@
 
 ## 1. Prompting with the COSTAR framework
 
+1. Write a prompt for your STEM interactive using the COSTAR framework and paste it into a new Gemini chat.
+2. Select Canvas from the Tools dropdown at the bottom left corner of the chat field, then hit Enter to generate your STEM interactive.
+3. Continue entering prompts into Gemini to refine your STEM interactive.
+
 | Element | Description | Sample |
 | :--- | :--- | :--- |
 | **Context (C)** | Essential background information that helps the AI understand the situation, environment, and circumstances surrounding your request. | I want students to investigate the relationship between light intensity and the rate of photosynthesis. In this experiment, a hydrilla plant is submerged in water. As it photosynthesizes, it produces oxygen bubbles. The independent variable is light intensity (manipulated by changing the distance of a lamp). The dependent variable is the rate of photosynthesis (measured by counting the number of bubbles produced per minute). |
@@ -14,6 +18,12 @@
 
 ## 2. Configuring for SLS & adding scoring
 
+1. Once you're satisfied, enter the prompts below into Gemini **one at a time** to make your STEM interactive SLS-compatible and add scoring.<br>
+   *\*SLS compatibility will allow your STEM interactive to render correctly in an SLS activity. Scoring is for integration with the Interactive Response Assistant in later steps.*
+2. In the Canvas pane to the right of the main chat, switch from Preview to Code view using the toggle button in the top right corner.
+3. Click on the text field, select the entire code (Ctrl + A), copy (Ctrl + C) and paste (Ctrl + V) it into a new Notepad file.
+4. Save this Notepad file, ensuring that "File name" is **index.html** and "Save as type" is changed to **All files**.
+
 | Purpose | Sample Prompt |
 | :--- | :--- |
 | **SLS Compatibility** | **# PERSONA**<br>You are a MOE STEM curriculum specialist, senior educational technologist and full-stack developer.<br><br>**# CONTEXT**<br>My STEM interactive (code in the uploaded index.html) is not rendering correctly on MOE's Student Learning Space (SLS). My goal is to tweak the code (without changing the intent and features) to make my STEM interactive render correctly on SLS.<br><br>**# TASK**<br>1. Deeply study the uploaded index.html for the code of my STEM interactive.<br>2. Deeply study the technical requirements for html files to render correctly on SLS.<br>3. Based on Steps 1 and 2, without changing the intent and features of my STEM interactive, critically review and refine the code to make my STEM simulation render correctly on SLS.<br>4. Present me the code from Step 3 within the Gemini Canvas.<br><br>**# TECHNICAL REQUIREMENTS FOR SLS COMPATIBILITY**<br>IMPORTANT: Non-Negotiable Technical Boundaries<br>\*Self-Contained HTML5: Entire app < 500 MB.<br>\*No External Connections: No CDNs (e.g., Bootstrap, Tailwind via link), no external APIs, no Google Fonts. All CSS/JS must be internal.<br>\*Proportional Scaling: Strictly NO absolute pixels (px). Use %, vh/vw, em, rem. The app must work in an SLS \<iframe>.<br>\*Vector-First UI: Use inline SVGs for all graphics to ensure crisp scaling.<br>\*Offline-First: 100% functional without internet.<br>\*Client-Side Only: No server/database. Use localStorage for state. |
@@ -22,24 +32,34 @@
 ## 3. Adding xAPI integration for score & response collection in SLS
 
 1. Upload "index.html", "xAPI.js" and "xapiwrapper.min.js" to a new Gemini chat.
-2. In the Tools dropdown, select Canvas.
-3. Paste the following prompt into the chat field.
+2. Select Canvas from the Tools dropdown at the bottom left corner of the chat field.
+3. Paste the following prompt into the chat field.<br>
    *\*You may edit Step 3 according to the data you wish to collect from students' interactions (e.g. scores, questions, selections, responses, etc.)*
+4. In the Canvas pane to the right of the main chat, switch from Preview to Code view using the toggle button in the top right corner.
+5. Click on the text field, select the entire code (Ctrl + A), copy (Ctrl + C) and paste (Ctrl + V) it into your "index.html" file.
+6. Save "index.html".
 
 | Sample Prompt |
 | :--- |
 | **# PERSONA**<br>You are an expert coder, API integration specialist and experienced educator."<br><br>**# CONTEXT**<br>I have uploaded an "index.html" file containing the code of my STEM interactive for Student Learning Space (SLS). I want to integrate xAPI tracking into this STEM interactive using the helper libraries "xAPI.js" and "xapiwrapper.min.js". The goal is to collect the student's score and selections/responses when they interact with the STEM simulation, and then send it to SLS so that these data are visible as feedback in the Interactive Response Assistant feature of SLS.<br><br>**# TASK**<br>1. Deeply study the uploaded files to understand what the code does.<br>2. Add code into "index.html" to integrate it with the helper libraries for xAPI tracking.<br>3. Still in "index.html", identify where the score and user responses change, and modify the event handlers so that these data automatically save to SLS whenever the student changes their dropdown selections in the Scientific Conclusion section or presses the "Check" button for the Bonus Question. Each score and selection/response should then be visible as feedback in the Interactive Response Assistant feature of SLS.<br>4. Present me the updated code for "index.html" of my STEM interactive within the Gemini Canvas. |
 
 ## 4. Preparing the files for upload to SLS
-Select all 3 files and right click to compress them into a single ZIP file.
+Select all 3 files and right click to compress them into a single ZIP file.<br>
+*\*"index.html" contains the code for your STEM interactive. "xAPI.js" and "xapiwrapper.min.js" contain the code for the xAPI integration.*
 
 <img width="593" height="411" alt="image" src="https://github.com/user-attachments/assets/174edcc0-fb5e-40b7-8625-379e0ec8a2a1" />
 
 *(Image: File Explorer showing index.html, xAPI.js, and xapiwrapper.min.js being compressed to a ZIP File)*
 
-## 5. Using your STEM interactive in an Interactive Response Question
-In your SLS activity, select **Question** > **Free-Response** > **Interactive Response Assistant** to create a new Interactive Response Question and upload the ZIP file from above.
+## 5. Using your STEM interactive in an Interactive Response Question (IRQ)
+1. In your SLS activity, select **Question** > **Free-Response** > **Interactive Response Assistant** to create a new IRQ and upload the ZIP file from above.
 
 <img width="593" height="467" alt="image" src="https://github.com/user-attachments/assets/946d9d6e-4431-4010-82e6-76cf2725b7c6" />
 
 *(Image: SLS Interface showing the navigation path to select Interactive Response Assistant)*
+
+2. You can then change the marks for this IRQ according to the total score in your STEM interactive and proceed to save it as you would for a normal SLS activity.
+
+<img width="389" height="184" alt="image" src="https://github.com/user-attachments/assets/46f74b9c-409a-402f-b8fe-d1f01658d2d2" />
+
+*(Image: SLS Interface showing where to change marks for the Interactive Response Question)*
