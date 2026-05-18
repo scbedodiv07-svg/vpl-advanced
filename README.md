@@ -26,7 +26,6 @@
 3. Paste the following prompt into the chat field.
    *\*You may edit Step 3 according to the data you wish to collect from students' interactions (e.g. scores, questions, selections, responses, etc.)*
 
-**Sample Prompt**
 | Sample Prompt |
 | :--- |
 | **# PERSONA**<br>You are an expert coder, API integration specialist and experienced educator."<br><br>**# CONTEXT**<br>I have uploaded an "index.html" file containing the code of my STEM interactive for Student Learning Space (SLS). I want to integrate xAPI tracking into this STEM interactive using the helper libraries "xAPI.js" and "xapiwrapper.min.js". The goal is to collect the student's score and selections/responses when they interact with the STEM simulation, and then send it to SLS so that these data are visible as feedback in the Interactive Response Assistant feature of SLS.<br><br>**# TASK**<br>1. Deeply study the uploaded files to understand what the code does.<br>2. Add code into "index.html" to integrate it with the helper libraries for xAPI tracking.<br>3. Still in "index.html", identify where the score and user responses change, and modify the event handlers so that these data automatically save to SLS whenever the student changes their dropdown selections in the Scientific Conclusion section or presses the "Check" button for the Bonus Question. Each score and selection/response should then be visible as feedback in the Interactive Response Assistant feature of SLS.<br>4. Present me the updated code for "index.html" of my STEM interactive within the Gemini Canvas. |
